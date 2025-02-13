@@ -1,0 +1,170 @@
+---
+title: "02_Kielczewski_Taylor"
+format: html
+editor: visual
+---
+
+```{r}
+library(dplyr)
+library(readr)
+library(ggplot2)
+library(forcats)
+library(paletteer)
+library(gganimate)
+library(ggridges)
+library(ggthemes)
+library(colorfindr)
+
+theme_set(theme_bw(base_size=12))
+
+ice <- read_csv("http://biol607.github.io/homework/data/NH_seaice_extent_monthly_1978_2016.csv") %>%
+  mutate(Month_Name = factor(Month_Name),
+         Month_Name = fct_reorder(Month_Name, Month))
+```
+
+### Box Plot
+
+```{r}
+library(ggplot2)
+library(RColorBrewer)
+library(tidyverse)
+
+ggplot(data = ice, aes(x= Month_Name, y = Extent, fill = Month_Name,
+                      )) +
+  geom_boxplot( alpha = .75, show.legend = FALSE) + 
+  labs( 
+    title = "Variability in Sea Ice",
+    x = "Month",
+    y = "Extent of Ice",
+    caption = "Data from Dave Curran",
+    subtitle = "From 1978 - 2016 ") + 
+ scale_fill_brewer(palette = "Paired") + 
+  theme(
+    plot.title = element_text(face = "bold"))
+```
+
+### Density Plot
+
+```{r}
+ggplot(data = ice, aes(x = Extent, y = Month_Name, fill = Month_Name)) +
+  geom_density_ridges2(alpha = .85, show.legend = FALSE) + 
+  labs( 
+    title = "Variability in Sea Ice",
+    x = "Extent of Ice",
+    y = "Month",
+    caption = "Data from Dave Curran",
+    subtitle = "From 1978 - 2016 ") +
+  scale_fill_brewer(palette = "Paired") + 
+  theme(
+    plot.title = element_text(face = "bold"))
+```
+
+### Faceted Line Plot
+
+```{r}
+ggplot(data = ice, aes(x = Year, y = Extent)) + 
+  geom_line(linewidth = .5) +
+  geom_smooth(method = "glm")+
+  facet_wrap(vars(cut_interval(Month, n = 4)),
+             labeller = as_labeller(c(
+               "[1,3.75]" = "Winter", 
+               "(3.75,6.5]" = "Spring", 
+               "(6.5,9.25]" = "Summer", 
+               "(9.25,12]" = "Fall"
+             ))) +
+  theme(strip.text = element_text(size = 16)) +
+  labs(y = "Extent of Ice") 
+```
+
+### Making A Color Palette
+
+#### I spent way too much time on this
+
+```{r}
+get_colors("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR0HAsDmyzatPtFBdywcOnS11wtiOIufZk-gA&s.jpg")  %>% 
+  make_palette(n = 39)
+
+my_palette5 <- c("#031927", "#0B2E41", "#0C4B74", "#033035", "#163A50", "#004157", "#04566C", "#1879A3", "#094871", "#3E7687", "#446E7C", 
+                "#285E8A", "#2A77AB", "#1F537B", "#31759C", "#3F879F", "#53838D", "#61A483", "#5098A7", "#61A483", "#2C7353", "#298E64", 
+                "#6CC686", "#28A5B7", "#82CD78", "#68D9A5", "#76DBA1", "#9EEDAB", "#99E9AE", "#86B5CF", "#7F8F9E", "#2DBFAA", "#4DBAC1", 
+                "#33B585", "#A5F0AF", "#82CD78", "#9EEDAB", "#76DBA1", "#86B5CF")
+
+```
+
+### Line Plot Pre-Animation
+
+```{r}
+
+ggplot(data = ice, aes(x = Month_Name, y = Extent, color=as.factor(Year), group = Year)) +
+  geom_line(show.legend = FALSE) +
+  scale_color_manual(values = my_palette5) +
+  labs( 
+    title = "Variability in Sea Ice",
+    x = "Extent of Ice",
+    y = "Month",
+    caption = "Data from Dave Curran",
+    subtitle = "From 1978 - 2016 ") + 
+  theme(
+    plot.title = element_text(face = "bold")) 
+```
+
+### Animated!
+
+```{r}
+
+
+a <- ggplot(data = ice, aes(x = Month_Name, y = Extent, color = as.factor(Year), group = Year)) +
+  geom_line(show.legend = FALSE) +
+  scale_color_manual(values = my_palette5) +
+  labs(title = "Variability in Sea Ice", subtitle = "Year: {round(frame_along)}", x = 'Month', y = 'Extent of Ice', color = 'Year', caption = "Data from Dave Curran") +
+  theme_stata(base_family = "Times", base_size = 16) +
+  transition_states(Year, transition_length = 2, state_length = 1) +
+  enter_appear()+
+  transition_reveal(along = Year)+ 
+  ease_aes('linear') 
+
+a
+```
+
+### Being Impressive
+
+```{r}
+
+ggplot(data = ice, aes(x = Year, y = Extent, color = Month_Name, fill = Month_Name))+
+  geom_point(shape = 21) +
+  geom_line(linewidth = 1.25)+
+  theme_bw() +
+  theme(
+    text = element_text(family = "Optima", size = 16),
+    plot.title = element_text(face = "bold", size = 28), panel.background = element_rect(fill = "grey99"), 
+    plot.background = element_rect(fill = "honeydew2"), axis.title.x = element_text(size = 20), axis.title.y =element_text(size = 20)) +
+  scale_colour_paletteer_d("ggsci::flattastic_flatui") +
+  labs(title = "Sea Ice Variability", subtitle = "from 1976 - 2016", x = "Year", y = "Extent of Sea Ice", color = "Month", fill = "Month") +
+  transition_states(Year, transition_length = 2, state_length = 1) +
+  enter_appear()+
+  transition_reveal(along = Year)+ 
+  ease_aes('linear') +
+  geom_segment(
+    aes(x = Year, xend = Year, y = max(Extent) * 1.05, yend = Extent),  
+    color = "grey25", linewidth = .7 , linetype = "solid", alpha = .3) +
+  geom_text(
+    aes(label = as.character(Year), x = Year, y = max(Extent)), 
+    color = "grey25",alpha = .5, size = 5, fontface = "bold", vjust = -.5 , hjust = -.5)
+
+```
+
+## Meta 1
+
+I am feeling a lot more confident about visualizing figures. ggplot makes it incredibly easy to compare different variables against each other quickly, and see trends/pattnerns. I am still grappling with the grammar of the language, but it's getting a bit more intuitive!
+
+## Meta 2
+
+My favorite thing is playing with all of the different aesthetic features to personalize each plot.
+
+## Meta 3
+
+I struggled with this assignment, but I feel like I learned a lot and am feeling more confident about plot-making in the future.
+
+## Meta 4
+
+Although I struggled with this assignment, I put in a lot of time and effort, and learned a lot about coding / troubleshooting. I would give myself a 'strong' rating for this assignment.
