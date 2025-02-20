@@ -1,0 +1,204 @@
+---
+title: "03_Kielczewski_Taylor"
+format: html
+editor: visual
+---
+
+# Tidy Data Homework
+
+## by Taylor Kielczewski
+
+## 2025-18-02
+
+#### Loading Packages
+
+```{r}
+library(readr)
+library(tidyr)
+library(tidyverse)
+```
+
+## Loading Data
+
+### ...from github!
+
+```{r}
+kelp_data <- read_csv("https://github.com/kelpecosystems/observational_data/blob/master/cleaned_data/keen_cover.csv?raw=true")
+
+kelp_data
+```
+
+### ... after I downloaded it to my computer
+
+```{r}
+kelp_data <- read_csv("homework_data/keen_cover.csv")
+
+```
+
+## Formatting Data
+
+```{r}
+print(kelp_data)
+
+```
+
+I think the data is in long format. Several of the values in the first column are repeated, and there is a row for each observation.
+
+## Check it out
+
+```{r}
+kelp_data |> 
+  group_by(PI) |> 
+    summarise(site = n_distinct(SITE))
+  
+```
+
+### 3a
+
+Byrnes has done 7 sites. Dijkstra has done 1 site. Humphries has done 2 sites. Hurricane has done 2 sites. Pemaquid has done 1 site.
+
+### 3b
+
+```{r}
+kelp_data |> 
+  group_by(SITE) |> 
+  summarise(years_count = n_distinct(YEAR)) |> 
+  arrange(desc(years_count))
+```
+
+### 3c
+
+```{r}
+three_c <- 
+  kelp_data |> 
+  mutate(date = paste(YEAR, MONTH, DAY, sep = "-"),
+         date = lubridate::ymd(date)) |> 
+  select(PI,SITE,date)
+
+three_c |> 
+  ggplot(mapping = aes(x = date, y = SITE, color = PI)) +
+  geom_point() +
+  labs(title = "Sites Surveyed", 
+       y = "Site Name") + 
+  scale_color_brewer(palette = "Dark2")
+```
+
+## Let's look at kelp!
+
+### 4a
+
+```{r}
+four_a <- kelp_data |> 
+  select(YEAR,SITE,TRANSECT,PERCENT_COVER,FAMILY,SPECIES)
+four_a
+
+```
+
+### 4b
+
+```{r}
+four_b <- four_a |> 
+  filter(FAMILY=="Laminariaceae") |> 
+  select(-FAMILY)
+
+four_b
+```
+
+### 4c
+
+```{r}
+View(four_b)
+```
+
+Yes, there are more than one measurement per species per transect in some cases.
+
+### 4d
+
+```{r}
+four_d <- four_b |> 
+  group_by(YEAR, SITE, TRANSECT, SPECIES) |> 
+  summarise(percent_cover = sum(PERCENT_COVER))
+four_d
+```
+
+### 4e
+
+```{r}
+ggplot(data = four_d, mapping = aes(x = YEAR, y =percent_cover, color = SITE))+
+  stat_summary(geom = "point", size = 1.5, alpha = .8) +
+  stat_summary(geom = "line", size = .75, alpha = .8) +
+  facet_wrap( ~ SPECIES, labeller = as_labeller(c(
+    "Laminaria digitata" = "L. digitata", 
+    "Saccharina latissima" = "S. latissima"
+  ))) + 
+  theme_minimal() +
+  labs(title = "Timeseries of Kelp Species",
+       x = "Year",
+       y = "Percent Cover") +
+  theme(legend.position = "bottom")
+
+```
+
+There is much more Saccharina latissima present in the transects. Overall, both kelp species experienced a decline, with the exception of S. latissimia in the NE Appledore site.
+
+## Wide Relationships
+
+### 5a
+
+```{r}
+four_d |> 
+  pivot_wider(names_from = SPECIES,values_from = percent_cover, values_fill = 0)
+```
+
+### 5b
+
+```{r}
+five_b <- four_d |> 
+  pivot_wider(names_from = SPECIES,values_from = percent_cover, values_fill = 0)
+ 
+five_b |> 
+  ggplot(mapping = aes(x=`Saccharina latissima`,y =`Laminaria digitata`)) +
+  geom_jitter() +
+  geom_smooth(method = "lm") +
+  labs(title = "Percent Cover of L. digitata vs S. latissima")
+```
+
+There is a horizontal trendline, so there is no real discernible trend between percent cover of L. digitata and S. latissima.
+
+### 5c
+
+```{r}
+
+five_c <- four_d |> 
+  pivot_wider(names_from = SPECIES,values_from = percent_cover) 
+
+five_c |> 
+  ggplot(mapping = aes(x=`Saccharina latissima`,y =`Laminaria digitata`)) +
+  geom_jitter() +
+  geom_smooth(method = "lm")  +
+  labs(title = "Percent Cover of L. digitata vs S. latissima")
+```
+
+Because we didn't arbitrarily assign a 0 value to absent data, the plot looks much different. There is a slight downward slope in the trendline, suggesting that as percent cover of S. latissima increases, the percent cover of L. digitata decreases. However, due to the small data set for L. digitata, more assays should be done before determining the relationship.
+
+## Meta Questions
+
+### Meta 1
+
+I felt okay working with it. It was interesting to play with something that was designed more for data entry rather than data analysis. It made me feel more comfortable handling real-life data sets in the future and manipulating them into something usable.
+
+### Meta 2
+
+I definitely need a bit more practice with this concept.
+
+### Meta 3
+
+I think I've made long data sets in the past. For the crab project in Marine Bio, our data set felt really organized, but looking back at it now feels really chaotic and unwieldly. After reading the Brownman and Woo paper, I will make sure not to create subsets in my spread sheets and try to have everything on one line.
+
+### Meta 3 (again)
+
+I think this took me \~3 hours.
+
+### Meta 4
+
+I put in a lot of work for this assessment, but I think I still need a bit of practice with the dplyr tools to have a better understanding / be able to use them on my own successfully. I would rate myself "sufficient".
