@@ -1,0 +1,303 @@
+---
+title: "Homework 6 - Taylor Kielczewski"
+format: html
+editor: visual
+---
+
+# **Complex Linear Models**
+
+**github**
+
+https://github.com/taylor-kielczewski/Biostatistics
+
+## **1. Complex Linear Models and their Design Matrices**
+
+```{r}
+# loading libraries & data
+
+library(dplyr)
+library(palmerpenguins)
+data(penguins)
+library(performance)
+library(knitr)
+library(ggplot2)
+library(readr)
+library(tidyverse)
+library(broom)
+library(visreg)
+library(modelr)
+
+penguins <- penguins |> filter(!is.na(sex))
+
+```
+
+## **1a.**
+
+```{r}
+pen_mod <- lm(body_mass_g ~ flipper_length_mm + sex, data = penguins)
+
+pen_mod
+
+```
+
+## **1b**
+
+| intercept | flipper_length_mm | sexmale |
+|-----------|-------------------|---------|
+| 1         | 181               | 1       |
+| 1         | 186               | 0       |
+| 1         | 195               | 0       |
+
+```{r}
+  
+model.matrix(body_mass_g ~ flipper_length_mm + sex, data = penguins)[1:3, ]
+
+
+```
+
+## **1c**
+
+```{r}
+
+contrasts(penguins$sex)
+contrasts(penguins$species) <- contr.sum(3)
+
+pen_mod2 <- lm(body_mass_g ~ flipper_length_mm + sex + species, data = penguins)
+
+
+pen_mod2
+```
+
+```{r}
+X <- model.matrix(body_mass_g ~ flipper_length_mm + sex + species, data = penguins)
+
+rows <- c(1, 2, 200, 201, 300, 301)
+
+X[rows,]
+```
+
+| intercept | flipper_length_mm | sexmale | species1 | species2 |
+|-----------|-------------------|---------|----------|----------|
+| 1         | 181               | 1       | 1        | 0        |
+| 1         | 186               | 0       | 1        | 0        |
+| 1         | 217               | 0       | -1       | -1       |
+| 1         | 220               | 1       | -1       | -1       |
+| 1         | 195               | 1       | 0        | 1        |
+| 1         | 199               | 0       | 0        | 1        |
+
+## **1d**
+
+```{r}
+
+pen_mod3 <- lm(body_mass_g ~ flipper_length_mm*sex + species, data = penguins)
+
+pen_mod3
+
+```
+
+```{r}
+Y <- model.matrix(body_mass_g ~ flipper_length_mm*sex + species, data = penguins)
+
+
+
+Y[rows,]
+```
+
+| intercept | flipper_length_mm | sexmale | species1 | species2 | flipper_length_mm:sexmale |
+|------------|------------|------------|------------|------------|------------|
+| 1 | 181 | 1 | 1 | 0 | 181 |
+| 1 | 186 | 0 | 1 | 0 | 0 |
+| 1 | 217 | 0 | -1 | -1 | 0 |
+| 1 | 220 | 1 | -1 | -1 | 220 |
+| 1 | 195 | 1 | 0 | 1 | 195 |
+| 1 | 199 | 0 | 0 | 1 | 0 |
+
+## ** 2. Three variations on a theme **
+
+```{r}
+# loading libraries and data
+
+pacman::p_load(DAAG)
+data(leaftemp)
+
+
+```
+
+```{r}
+lm1 <- lm(tempDiff ~ vapPress, data = leaftemp) 
+  plot(lm1)
+
+lm2 <- lm(tempDiff ~ vapPress + CO2level, data= leaftemp)
+  plot(lm2)
+
+lm3 <- lm(tempDiff ~ vapPress*CO2level, data= leaftemp) 
+  plot(lm3)
+```
+
+### **2b.**
+
+```{r}
+check_model(lm1)
+```
+
+```{r}
+check_model(lm2)
+```
+
+```{r}
+check_model(lm3)
+```
+
+lm1 and lm2 pass checks of the assumptions. lm3 passes all but the collinearity check.
+
+## **2c**
+
+$$ tempdiff_i = \beta_0 + (\beta_1 \times vapPress_i) + (\beta_2 \times Elevated_i) + (\beta_3 \times High_i) + \epsilon_i $$
+
+## **2d**
+
+```{r}
+leaftemp$pred_lm1 <- predict(lm1)
+leaftemp$pred_lm2 <- predict(lm2)
+leaftemp$pred_lm3 <- predict(lm3)
+```
+
+```{r}
+lm1_plot <- ggplot(data = leaftemp, aes(y = tempDiff, x = vapPress)) + 
+  geom_jitter(alpha = .5) +
+  geom_line(aes(y = pred_lm1), color = "blueviolet")
+ 
+lm1_plot + labs( title = "Simple Linear Regression")
+```
+
+```{r}
+lm2_plot <- ggplot(leaftemp, aes(x = vapPress, y = tempDiff, color = CO2level)) +
+  geom_point(alpha = .8) +
+  geom_line(aes(y = pred_lm2, group = CO2level)) +
+  scale_color_viridis_d()
+ 
+lm2_plot + labs( title = "ANCOVA")
+```
+
+```{r}
+lm3_plot <- ggplot(data = leaftemp, aes(x=vapPress, y = tempDiff, color = CO2level)) +
+  geom_point(alpha = .7) +
+  geom_line(aes(y=pred_lm3)) +
+  scale_color_brewer(palette = "Dark2")
+
+lm3_plot + labs(title = "Interaction")
+```
+
+# **Part 3: Interactions with Continuous Variables**
+
+```{r}
+# Loading Data
+detritivore <- read_csv("data/c_burial_sims.csv")
+
+tibble(detritivore)
+```
+
+## **3a**
+
+```{r}
+det_lm <- lm(log(net_carbon_sequestration) ~ log(microbial_abundance * detritivore_biomass * sink_rate), data = detritivore)
+
+det_lm |> plot()
+```
+
+```{r}
+check_model(det_lm)
+```
+
+Homogeneity of variance is still bad - we have to center the model.
+
+```{r}
+data <- detritivore %>%
+  mutate(
+    sink_c = sink_rate - mean(sink_rate, na.rm = TRUE),
+    microbe_c = microbial_abundance - mean(microbial_abundance, na.rm = TRUE),
+    detriti_c = detritivore_biomass - mean(detritivore_biomass, na.rm = TRUE)
+  )
+```
+
+```{r}
+centered_model <- lm(net_carbon_sequestration ~ sink_c * microbe_c * detriti_c, data = data)
+
+centered_model |> plot()
+```
+
+```{r}
+check_model(centered_model)
+```
+
+## **3b**
+
+```{r}
+summary(centered_model)
+```
+
+$\beta_0$ = intercept, the expected sequestration when all predictors are at their means
+
+$\beta_1$ = effects of sinking rate when other predictors are at their mean 
+$\beta_2$ = effects of microbial abundance when other predictors are at their mean 
+$\beta_3$ = effects of detritivore biomass when other predictors are at their mean
+
+$\beta_4$ = combined effects of sinking rate and microbial abundance $\beta_5$ = combined effects of sinking rate and detritivore biomass $\beta_6$ = combined effects of detritivore biomass and microbial abundance
+
+$\beta_7$ = combined effects of all three predictors
+
+## **3c**
+
+```{r}
+det_predict <- augment(centered_model, interval="confidence")
+det_predict
+```
+```{r}
+det_predict <- det_predict |> 
+  mutate(detri_facet = cut(detriti_c,
+  breaks = quantile(detriti_c, probs = c(0, 1/3, 2/3, 1)),
+                    labels = c("Low", "Medium", "High"),
+                    include.lowest = TRUE))
+```
+
+```{r}
+ggplot(det_predict, aes(x = sink_c, y = .fitted, color = microbe_c)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "loess", se = TRUE) +
+  facet_wrap(~detri_facet) +
+  scale_color_viridis_c() +
+  labs(
+    title = "Net Carbon Sequestration",
+    x = "Sink Rate",
+    y = "Net Carbon Sequestration",
+    color = "Microbial Abundance"
+  ) +
+  theme_minimal()
+  
+```
+# **Meta Questions**
+
+## Question 1. 
+
+Maybe interactions with discrete variables? 
+
+## Question 2. 
+
+I think the transformation and visualization is the most tricky for me. I am having trouble figuring out how to handle the data and regression, and how to plot it so all of the information is available. 
+
+## Question 3.
+
+I think I will use LM with multiple predictors in response to my kelp mapping project. 
+
+## Question 4.
+
+I am a bit lost still -- I don't know when/what transformation of the data will allow it to keep it's integrity, and what would ruin the model.
+
+## Question 5.
+
+4-5 hours
+
+## Question 6.
+
+Sufficient. I feel okay on parts 1 & 2, but the viz on part 3 really challenged me. 
+
