@@ -76,6 +76,27 @@ ggplot(data = ice, aes(x = Year, y = Extent)) +
   labs(y = "Extent of Ice") 
 ```
 
+::: callout-important
+You did a great job!
+
+You can improve this plot coloring by month names. Since there is a trend every month, lines joining independent samples are not accurate.
+
+```{r}
+ggplot(data = ice, aes(x = Year, y = Extent, group= Month)) + 
+  geom_line(linewidth = .5, aes(color= Month_Name)) +
+  geom_smooth(method = "glm", linewidth = .5) +
+  facet_wrap(vars(cut_interval(Month, n = 4)),
+             labeller = as_labeller(c(
+               "[1,3.75]" = "Winter", 
+               "(3.75,6.5]" = "Spring", 
+               "(6.5,9.25]" = "Summer", 
+               "(9.25,12]" = "Fall"
+             ))) +
+  theme(strip.text = element_text(size = 16)) +
+  labs(y = "Extent of Ice") 
+```
+:::
+
 ### Making A Color Palette
 
 #### I spent way too much time on this
@@ -126,7 +147,26 @@ a <- ggplot(data = ice, aes(x = Month_Name, y = Extent, color = as.factor(Year),
 a
 ```
 
+
+
+
+
+
 ### Being Impressive
+
+::: callout-important
+
+When I tried to reproduce this chunk, I could not because R could not find the palette name.
+It happens because you did not include the library, or there is a typo in the name.
+
+Remember to include every library you use to develop your work for future homework.
+
+```{r}
+#library(palette)
+
+ #scale_colour_paletteer_d("ggsci::flattastic_flatui")
+```
+:::
 
 ```{r}
 
@@ -138,7 +178,7 @@ ggplot(data = ice, aes(x = Year, y = Extent, color = Month_Name, fill = Month_Na
     text = element_text(family = "Optima", size = 16),
     plot.title = element_text(face = "bold", size = 28), panel.background = element_rect(fill = "grey99"), 
     plot.background = element_rect(fill = "honeydew2"), axis.title.x = element_text(size = 20), axis.title.y =element_text(size = 20)) +
-  scale_colour_paletteer_d("ggsci::flattastic_flatui") +
+  #scale_colour_paletteer_d("ggsci::flattastic_flatui") +
   labs(title = "Sea Ice Variability", subtitle = "from 1976 - 2016", x = "Year", y = "Extent of Sea Ice", color = "Month", fill = "Month") +
   transition_states(Year, transition_length = 2, state_length = 1) +
   enter_appear()+
