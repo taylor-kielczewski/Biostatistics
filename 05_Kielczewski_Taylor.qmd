@@ -1,0 +1,283 @@
+---
+title: "05_Kielczewski_Taylor"
+format: html
+editor: visual
+---
+
+# Homework 5
+
+### by Taylor Kielczewski
+
+## Loading Libraries
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(abd)
+library(readr)
+library(performance)
+library(tinytex)
+library(broom)
+```
+
+## Part 1
+
+### Reading Data
+
+```{r}
+grey_matter <- read_csv("data/chap16q15LanguageGreyMatter.csv")
+
+grey_matter
+
+```
+
+### Looking at Correlations
+
+```{r}
+cor(grey_matter)
+
+cor.test(x = grey_matter$proficiency, y = grey_matter$greymatter)
+
+```
+
+### Z-Transformation
+
+```{r}
+z_grey <- grey_matter |> 
+  mutate(
+    z_prof = (proficiency - mean(proficiency)) / sd(proficiency),
+    z_greymatter = (greymatter - mean(greymatter)) / sd(greymatter)
+  ) |> 
+  select( -proficiency) |> 
+  select(-greymatter)
+
+
+               
+```
+
+### Question 1
+
+#### a. Plot
+
+```{r}
+ggplot(data= grey_matter, mapping = aes(x=proficiency,y = greymatter)) +
+  geom_point() +
+  geom_smooth(method = "lm") + 
+  labs(title = "Language Proficiency vs Grey Matter",
+y = "amount of grey matter", 
+x = "proficiency in second language") 
+```
+
+#### b. Calculating correlation
+
+##### linear model
+
+```{r}
+
+z_grey_mod <- lm(z_greymatter ~ z_prof, data = z_grey)
+summary(z_grey_mod)
+```
+
+##### cor() functions
+
+```{r}
+
+cor(grey_matter)
+
+cor.test(x = grey_matter$proficiency, y = grey_matter$greymatter)
+```
+
+The correlation between proficiency and grey matter is .8183134
+
+#### d. Assumptions!
+
+1.  Validity
+2.  Representativeness
+3.  Model captures features in the data
+4.  Additivity and Linearity
+5.  Indepdence of Errors
+6.  Equal Variance of Errors
+7.  Normality of Errors
+8.  Miminal Outlier Influence
+
+#### e. Does the scatterplot meet these assumptions?
+
+```{r}
+
+check_model(z_grey_mod)
+
+
+```
+
+The scatterplot does not meet all of these assumptions. After running the check_model() function, we can see that the linear model does not have linearity or a homogeneity of variance. Additionally, there are some residuals with more extreme values than the rest of the data points. So, the model may have valid and representative data, but it does not have linearity, homogenetiety of variance, and is influenced by outliers.
+
+#### f. Results
+
+The results do not demonstrate a statistically significant correlation, due to the many issues in the linear model. Correlation does not mean causation and the results do not adequately demonstate that second language proficiency affects grey-matter density in the brain.
+
+## Part 2
+
+### Loading & Viewing Data
+
+```{r}
+lizardbite <- LizardBite
+
+summary(lizardbite)
+
+lizardbite |> 
+  ggplot(aes(x = bite, y = territory)) +
+  geom_point()
+```
+
+### A. Linear Model
+
+```{r}
+lizard_mod <- 
+  lm(territory ~ bite, data = lizardbite)
+
+lizard_mod 
+summary(lizard_mod)
+```
+
+### B. Assumptions
+
+```{r}
+check_model(lizard_mod)
+
+```
+
+In the check_model() plots, the Posterior Predictive Check compares the linear model to the actual observed data points. The model predicted-lines do not resemble the observed data line, so the model does not adequately capture features in the data.
+
+The linearity plot tests the linearity and additivity of the model. The reference line is not flat and horizonal, so the model does not have good linearity.
+
+The homogeneity of variance plot tests if the variance between groups is even. The reference line is not flat and horizonal, so this assumption is not met.
+
+The influential observations plot tests for outliers and datapoints that have an impact on the regression line. All datapoints are within the bounds of the plot, so there are no extreme outliers.
+
+The normality of residuals plot tests for normality of errors. The points are mostly along the line, so this assumption is met.
+
+### C. Intercept and Slope
+
+```{r}
+summary(lizard_mod)
+```
+
+The intercept is -31.54, while the slope is 11.68. This means that when there is a bite force of 0, the lizard has a -31.54 territory size -- which is illogical. The 11.68 slope means that for every 1-unit increase in bite force, the territory size should increase by 11.68 units.
+
+### D. Confidence Intervals
+
+```{r}
+confint(lizard_mod, level = .95)
+```
+
+The 95% CI for the slope is between .710 and 22.645. This means that these values are +/- 2 SE's from the mean(slope). There is a 95% chance that the true parameter will be in this range of values.
+
+### E. SE and Sampling Distribution
+
+A sampling distribution is the probability distribution of a statistic obtained from drawing random samples from a population. The standard error of the slope quantifies the variability of the model estimated slope across the different samples of the population.
+
+### F. Confidence Intervals
+
+```{r}
+
+bite_5 <- tibble(bite =5)
+
+lizard_confidence <- predict(lizard_mod, 
+                       newdata = bite_5, 
+                       interval = "confidence",
+                       level = 0.95)
+lizard_predict <- predict(lizard_mod, 
+                          newdata = bite_5, 
+                          interval = "prediction", 
+                          level = 0.95)
+
+lizard_confidence
+lizard_predict
+
+
+```
+
+The CI is an interval to predict the mean size of any lizard's territory who has a bite force of 5. The PI is used to predict the territory of one individual in the sample. The CI should be used when looking at the mean of the collected data, the PI should be used when trying to predict the territory size of an individual in the population.
+
+## LaTeX
+
+$$
+Y_i =  \beta_0 + \beta _1 X_i + \epsilon_i
+$$
+
+$$
+\epsilon_i \sim N(0, \sigma)
+$$
+
+## Part 4
+
+### Loading data
+
+```{r}
+birthyear <- read_csv("https://whitlockschluter.zoology.ubc.ca/wp-content/data/chapter17/chap17q30NuclearTeeth.csv")
+
+```
+
+### Regression line
+
+```{r}
+birthyear <- birthyear |> 
+  mutate(delta = deltaC14, dob = dateOfBirth) |> 
+  select(-deltaC14,-dateOfBirth)
+
+birth_mod <-lm(dob ~ delta, data = birthyear)
+
+summary(birth_mod)
+
+```
+
+a.  The approx. slope of the regression line is -.053
+
+b.  The confidence bands are the two lines closest to the linear regression line. They tell us the uncertainty in the model.
+
+c.  The prediction bands are the two lines farthest from the linear regression line. They tell us the uncertainty of simulated new data points created with the model.
+
+d.  
+
+```{r}
+birth_plot <- ggplot(data = birthyear, mapping = aes(x = delta, y = dob)) +
+  geom_point(color = "red") +
+  stat_smooth(method = lm, formula = y~x, color = "black", alpha =.6)
+
+pred_frame <- data.frame(
+  delta = min(birthyear$delta):max(birthyear$delta))
+
+birth_pred <- pred_frame |>
+  augment(x = birth_mod, 
+          newdata = pred_frame,
+          interval = "prediction")
+
+birth_plot +
+  geom_ribbon(data = birth_pred, 
+              mapping = aes(y = .fitted, 
+                            ymin = .lower, 
+                            ymax = .upper),
+                          alpha = 0.25, fill = "black") +
+  labs(y = "Date of Birth",
+       x = "Delta C14")
+
+
+```
+
+## Meta Questions
+
+### Meta 1.
+
+I feel okay about the assumption testing behind a linear model. I am still trying to feel comfortable looking at the check_model() plots to figure out whats going on / how to fix the model.
+
+### Meta 2. 
+
+I think I need more practice with the confit() and predict() functions, and understanding when to use one versus another.
+
+### Meta 3. 
+
+3-ish hours I think.
+
+### Meta 4.
+
+Sufficient.
