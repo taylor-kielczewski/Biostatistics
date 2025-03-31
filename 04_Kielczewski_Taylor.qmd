@@ -1,0 +1,147 @@
+---
+title: "04_Kielczewski_Taylor"
+format: html
+editor: visual
+---
+
+# Homework 4
+
+### by Taylor Kielczewski
+
+## Loading Libraries
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(gt)
+library(labeling)
+```
+
+## 1 Visualizing the Exponential Expression
+
+### 1a. Making a tibble
+
+```{r}
+
+x <- seq(0,4, length.out = 200)
+y <- c(.2,.5,1,2,4)
+
+exp <- tibble(crossing(x = x,y = y))
+
+```
+
+### 1b.
+
+```{r}
+result <- exp |> 
+  mutate(prob_density = dexp(x, rate = y))
+```
+
+### 1c.
+
+```{r}
+result |> 
+  ggplot(mapping = aes(x = x, y = prob_density, color = y)) + 
+  geom_point(size = .2,) +
+  labs( y = "Probability Density",
+        x = "X-Values",
+        title = "Exponential Density Changes",
+        color = "Rate") +
+  scale_color_gradient(low = "coral", high = "coral4")
+```
+
+## 2. Precision and Sampling the Exponential
+
+### 2a. 
+
+```{r}
+simulation <- seq(1,1000)
+rate <- c(.2,.5,1,2,4)
+
+
+thousand <- tibble(crossing(simulation = simulation, rate = rate))
+
+```
+
+### 2b. 
+
+```{r}
+fifty_k <- crossing(simulation = simulation, rate = rate) |> 
+  rowwise() |> 
+  mutate(sample = list(rexp(10, rate=rate))) |> 
+  unnest(cols = sample) 
+```
+
+### 2c
+
+```{r}
+stats_data <- fifty_k|> 
+  group_by(simulation, rate) |> 
+  summarise(
+    mean_sample = mean(sample),
+    median_sample = median(sample),
+    sd_sample = sd(sample),
+    .groups = "drop")
+```
+
+### 2d
+#### Table
+
+```{r}
+se_data <- stats_data |> 
+  group_by(rate) |> 
+  summarize(
+    mean_SE =sd(mean_sample) / sqrt(1000),
+    median_SE = sd(median_sample) / sqrt(1000),
+    sd_SE = sd(sd_sample) / sqrt(1000),
+    .groups = "drop"
+  )
+
+se_data |> gt()
+```
+
+#### Plots
+
+```{r}
+se_long <- se_data |> 
+  pivot_longer(cols = c(mean_SE, median_SE,sd_SE), names_to = "Stat", values_to = "SE") |> 
+  ggplot(mapping = aes (x = rate, y = SE)) +
+  geom_line(aes(color = Stat)) +
+  theme(legend.position = "none") +
+  facet_wrap(~Stat, 
+             labeller = labeller(Stat = c(
+               mean_SE = "SE of Mean",
+               median_SE = "SE of Median",
+               sd_SE = "SE of SD"
+             ))) + 
+  labs(title = "Effects of Rate on SE",
+       x ="Rate",
+       color = "Statistic")
+
+se_long
+```
+
+### 2e
+
+As the rate increases, the variability within the sample decreases, so these results are to be expected. 
+
+## Meta Questions
+
+### Question 1 
+The stuff we talked about in lecture was relatively familiar to me, but taking the SE of statistical data was a bit alien and confusing. I'm not entirely sure what it represents.
+
+### Question 2
+In my animal behavior class, Prof. Kao showed us how to use simulations to model random walks. 
+
+### Question 3
+I was faster at the beginning and slowed down a lot during question 2. 
+
+### Question 4
+I don't understand the group_by() function. I don't know why but I am having trouble conceptualizing exactly what it does. The other dpylr functions I am feeling more comfortable with. Pipes are my new best friend. 
+
+### Question 5
+3 ish hours? Time seems to speed up a bit when I'm trying to debug a code.
+
+### Question 6
+
+Sufficient. I needed a bit of help to finish my plots. 
