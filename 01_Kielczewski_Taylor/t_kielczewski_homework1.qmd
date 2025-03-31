@@ -1,0 +1,105 @@
+---
+title: "t_kielczewski_hw1"
+format: html
+editor: visual
+---
+
+# Homework 1
+
+### by Taylor Kielczewski
+
+### BIOL607
+
+::: callout-important
+You did great.
+
+You could improve the readability of your homework if you included the questions that you are answering in every chunk
+:::
+
+```{r}
+data(quakes)
+
+str(quakes)
+
+```
+
+```{r}
+summary(quakes)
+```
+
+```{r}
+quakes$long
+```
+
+```{r}
+unique(quakes$stations)
+```
+
+```{r}
+length(unique(quakes$stations))
+```
+
+There are 102 unique stations.
+
+```{r}
+range(quakes$depth)
+```
+
+The range of earthquake depths are between 40-680
+
+```{r}
+max(quakes$mag)
+quakes[quakes$mag == 6.4, ]
+```
+
+::: callout-important
+Impress Yourself. Where was the earthquake of largest magnitude found? You’ll need to use come comparisons and the `max()` function for this in your indices instead of a number!
+
+```{r}
+quakes[which(quakes$mag == max(quakes$mag)),]
+```
+:::
+
+The largest magnitude earthquake was measured at a 6.4. It was measured at station #122, which is at (-15.56, 167.62).
+
+## A Little LaTeX
+
+$$
+x = \mu 
+$$
+
+One dollar sign creates an inline equation, like $Y_i = 3X_i$
+
+Two dollar signs creates a display equation, like this:
+
+$$
+Y_i = 3X_i 
+$$
+
+### Superscripts
+
+$$
+a^2 + b^2 = c^2 
+$$
+
+### Normal Distribution
+
+$$ 
+y_i \sim N(\hat{y_i},\sigma^2)
+$$
+
+### Meta Questions
+
+::: callout-important
+Good Job!
+
+You did great.
+:::
+
+1.  It was less difficult than I expected. I think that by familiarizing myself with a little bit of code during January break helped whittle away some of the anxiety regarding R. The LaTeX, was the most difficult/tedious part for me.
+
+2.  It was tricky, but the links that were provided were very helpful. I think that it will be useful outside of class for writing about statistical analysis.
+
+3.  I think it took me about an hour (but I broke it up into several sessions)
+
+4.  Sufficient. I felt confident with all of the questions, but had a little trouble with finding the location of the max magnitude earthquake. That problem required a little extra research and troubleshooting.
