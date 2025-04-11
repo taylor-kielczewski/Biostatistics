@@ -1,0 +1,619 @@
+---
+title: "Taylor Kielczewski Midterm, 2025"
+format: html
+editor: visual
+---
+
+**github:**
+
+<https://github.com/taylor-kielczewski/Biostatistics/tree/main>
+
+```{r}
+# Loading Libraries & setting theme
+
+library(readr)
+library(ggplot2)
+library(dplyr)
+library(performance)
+library(broom.mixed)
+library(lubridate)
+library(tidyr)
+library(ggthemr)
+library(ggthemes)
+library(gganimate)
+library(car)
+library(lme4)
+library(visreg)
+library(ggeffects)
+library(emmeans)
+library(RColorBrewer)
+library(paletteer)
+library(patchwork)
+
+
+
+theme_set(theme_minimal(base_size = 13))
+
+```
+
+# **Question 1: Data Reshaping and Visualization**
+
+```{r}
+# 1a. Loading Data
+
+covid <- read_csv('https://raw.githubusercontent.com/CSSEGISandData/COVID-19/refs/heads/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_US.csv')
+
+covid
+```
+
+```{r}
+# 1b. Big & Wide
+
+# filter to a state
+MA_covid <- covid |>
+  filter(Province_State == "Massachusetts") |>
+ select(
+    -UID, -iso2, -iso3, -code3, -FIPS, -Admin2, 
+    -Lat, -Long_, -Country_Region, -Province_State, -Combined_Key
+  )  |> 
+  summarise(across(everything(), sum, na.rm = TRUE))
+
+
+  
+# pivot longer
+  MA_long <- MA_covid |> 
+    pivot_longer(cols = everything(), names_to = "date", values_to = "cumulative_cases")
+  
+# columns for date, new cases, cumulative cases
+  MA_long <- MA_long |> 
+    mutate(
+      date = as.character(date),
+      date =mdy(date)) |> 
+    mutate(new_cases = cumulative_cases - lag(cumulative_cases)) |> 
+    select(date, new_cases, cumulative_cases) |> 
+    mutate_all(~replace(., is.na(.), 0))
+  
+  MA_long
+
+```
+
+```{r}
+# 1c. Visualization
+
+plot <- ggplot(MA_long, aes(x = date, y = cumulative_cases)) +
+  geom_area(fill = "grey35", alpha = 0.6, stat = "identity") + 
+  geom_line(aes(color = new_cases), linewidth = 3.5) +
+  geom_point(aes(color = new_cases), size = 3) +
+  scale_color_viridis_c(option = "rocket") +
+  labs(
+    title = 'COVID-19 in Massachusetts',
+    subtitle = 'Date: {frame_along}',
+    x = 'Date',
+    y = 'Cumulative Cases',
+    color = "New Daily Cases",
+    caption = "Data from JHU"
+  ) +
+  transition_reveal(date)
+
+plot
+```
+
+# **Question 2: Fit and Evaluate a Linear Model**
+
+```{r}
+# 2a. What should I do? 
+
+# 1. load the data 
+
+# 2. look at data
+
+# 3. tidy data
+
+# 4. initial visualization
+
+# 5. fitting a linear model
+
+# 6. check assumptions
+
+# 7. look at parameters
+
+# 8. plot with statistical parameters
+```
+
+```{r}
+# loading data
+
+quail <- read_csv("data/Morphology_data.csv")
+
+```
+
+```{r}
+# 2b. Let's get started
+
+str(quail)
+
+quail <- quail |> 
+  mutate(
+    bird_number = as.factor(`Bird #`),
+    age = as.factor(`Age (days)`)
+  ) |> 
+  mutate(
+    temp_C = as.factor(`Exp. Temp. (degree C)`),
+    mass_g = `Mass (g)`,
+    tarsus_mm = `Tarsus (mm)`, 
+    culmen_mm = `Culmen (mm)`,
+    depth_mm = `Depth (mm)`,
+    width_mm = `Width (mm)`,
+    sex = Sex,
+    notes = NOTES
+  ) |> 
+  select(-`Bird #`, -`Age (days)`, -`Width (mm)`, -`Depth (mm)`,-`Culmen (mm)`,-`Tarsus (mm)`,-`Mass (g)`, -`Exp. Temp. (degree C)`, -Sex, -NOTES) |> 
+  select(bird_number, age, everything()) 
+  
+
+
+```
+
+```{r}
+# 2c. Visualization
+
+quail_plot <- quail |> ggplot(aes(x=age, y =tarsus_mm, color = temp_C )) +
+  geom_jitter(alpha = .6) +
+  scale_color_manual(
+  values = c("15"="steelblue","30" = "coral2"),
+  labels = c("15 °C", "30 °C")) +
+  labs(title = "Development of Tarsus Length", 
+       color = "Temperature",
+       y = "Tarsus Length (mm)",
+       x = "Age (days)")
+
+quail_plot
+
+
+
+```
+
+```{r}
+# 2d. Fit and Evaluate
+
+library(MASS)
+library(DHARMa)
+
+quail_mod <- lmer(
+  data = quail,
+  tarsus_mm ~ age * temp_C + (1 | bird_number)
+)
+
+quail_mod |> plot()
+
+check_model(quail_mod)
+
+
+# there are high VIFs in the linear model, but this is to be expected when including bird_number as a block effect & by using a factorial design.  
+```
+
+```{r}
+# 2e. Interpretation 
+summary(quail_mod)
+
+tidy(quail_mod)
+
+r2(quail_mod)
+
+visreg(quail_mod)
+
+```
+
+```{r}
+# Fancy Visualization
+
+quail_em <- emmeans(quail_mod, ~ temp_C | age)
+quail_em
+
+contrast(quail_em, method = "pairwise")
+
+em_df <- as.data.frame(quail_em)
+
+ggplot(em_df, aes(x = age, y = emmean, color = temp_C)) +
+  geom_line(size = 1.2) +
+  geom_point(size = 2) +
+  scale_color_manual(values = c("steelblue","coral2"))+
+  geom_errorbar(aes(ymin = lower.CL, ymax = upper.CL), width = 0.5, alpha = 0.6) +
+  labs(
+    title = "Estimated Marginal Means of\n Tarsus Length by Age and Temperature",
+    x = "Age (days)",
+    y = "Estimated Tarsus Length (mm)",
+    color = "Temperature (°C)")
+
+# According to the simulated model, early life temperatures significantly influences the tarsus length in Japanese quail. There are minimal differences at early life stages, but at day 21+, quail chicks exposed to 30°C temperatures have longer tarsus lengths. 
+```
+
+# **Question 3: Something Generalized**
+
+```{r}
+# 3a. Fit a GLM 
+
+# 1. load the data 
+rhiz <- read_csv("data/greenhouse_inoculation_expt_2010.csv")
+rhiz
+```
+
+```{r}
+
+# 2. look at data
+glimpse(rhiz)
+summary(rhiz)
+View(rhiz)
+
+```
+
+```{r}
+# 3. tidy data
+
+rhiz <- rhiz |> 
+  dplyr::select(-rack,-bench,-bench_pos,-rack_pos,-flower_mar23,-height_apr20,)
+
+```
+
+```{r}
+
+# 4. initial visualization
+
+rhiz_plot <- rhiz |> ggplot(aes(y=leaf_mar12, x=height_mar12, color = rhiz_region))+
+  geom_point(alpha = .8, size = 2) +
+  scale_color_paletteer_d("nationalparkcolors::Acadia") +
+  labs(title = 'Leaves vs Height',
+       x = "Height",
+       y = "Number of Leaves",
+       color = "Rhizobia Region",
+       caption = "data from doi.org/10.5061/dryad.8566")
+  
+rhiz_plot
+
+```
+
+```{r}
+# 5. fitting a linear model
+
+rhiz_mod <- glm(data = rhiz, 
+               leaf_mar12 ~ height_mar12+rhiz_region,
+               family = poisson(link = "log"))
+
+```
+
+```{r}
+# 6. check assumptions
+check_model(rhiz_mod)
+
+check_overdispersion(rhiz_mod) |> plot()
+
+```
+
+```{r}
+# 7. look at parameters
+
+summary(rhiz_mod)
+
+```
+
+```{r}
+
+# 8. plot with statistical parameters
+
+rhiz |> ggplot(aes(y=leaf_mar12, x=height_mar12, color = rhiz_region))+
+  geom_point(alpha = .5) +
+  scale_color_paletteer_d("nationalparkcolors::Acadia") +
+  labs(title = 'Leaves vs Height',
+       x = "Height",
+       y = "Number of Leaves",
+       color = "Rhizobia Region",
+       caption = "data from doi.org/10.5061/dryad.8566")+
+  facet_wrap(~ rhiz_region)+
+  stat_smooth(method = glm,
+              method.args = list(family = poisson(link = "log")))
+
+# I chose a GLM with a Poisson error distribution with a log link because the response variable is count data.
+```
+
+```{r}
+# 3b.
+
+exp(coef(rhiz_mod))
+
+# Plants inoculated with rhizobia from the "beyond" region produced the most leaves on average, followed by the "interior" and "edge" regions, respectively. All rhizobia-inoculated plants developed more leaves than those in the "c" group, which served as the control. These results suggest that rhizobia enhance early leaf development, with the greatest benefit observed from the beyond-region inoculation. 
+
+```
+
+```{r}
+# 3c. Prediction Intervals from a distribution
+## Poisson Distribution 
+
+lambda <- 1:30
+q025 <- qpois(0.025, lambda = lambda)
+
+q975 <- qpois(0.975, lambda = lambda)
+
+
+
+poisson <- tibble(
+  lambda = lambda,
+  lower = q025,
+  upper = q975)
+
+poisson
+
+p_plot <- ggplot(poisson, aes(x = lambda)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), fill = "skyblue1", alpha = 0.5) +
+  geom_line(aes(y = lower), color = "blue4") +
+  geom_line(aes(y = upper), color = "blue4")
+
+p_plot + labs(
+    title = "95% Prediction Intervals for Poisson Distributions",
+    x = "Poisson Mean (λ)",
+    y = "Count Range (95% Interval)")
+```
+
+```{r}
+# Negative Binomial 
+
+mu <- 1:30
+size <- 10
+
+nb <- tibble(
+  mu = mu,
+  lower = qnbinom(0.025, mu = mu, size = size),
+  upper = qnbinom(0.975, mu = mu, size = size)
+)
+
+nb_plot <- ggplot(nb, aes(x = mu)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), fill = "tomato", alpha = 0.4) +
+  geom_line(aes(y = lower), color = "red3") +
+  geom_line(aes(y = upper), color = "red3") 
+
+
+
+nb_plot + labs(
+    title = "95% Prediction Intervals for Negative Binomial Distributions",
+    x = "Mean (μ)",
+    y = "Count Range (95% Interval)",
+    caption = "size = 10"
+  )
+```
+
+```{r}
+
+
+big_plot <- p_plot + nb_plot + plot_annotation(
+  title = "95% Prediction Intervals for Poisson and Negative Binomial Distributions"
+  )
+
+big_plot
+```
+
+```{r}
+# 3d. Prediction Intervals
+
+summary_heights <- rhiz |> 
+  group_by(rhiz_region) |> 
+  reframe(
+    height_mar12 = c(min(height_mar12), mean(height_mar12), max(height_mar12)),
+    height_type = c("min", "mean", "max")
+  )
+
+rhiz_predict <- predict(
+  rhiz_mod,
+  newdata = summary_heights,
+  se.fit = TRUE,
+  type = "link")
+
+summary_heights <- summary_heights |> 
+  mutate(
+    fit_link = rhiz_predict$fit,
+    se_link = rhiz_predict$se.fit,
+    fit_resp = exp(fit_link),
+    lower_fit = exp(fit_link - 2 * se_link),
+    upper_fit = exp(fit_link + 2 * se_link),
+    lower_pred = qpois(0.025, lambda = fit_resp),
+    upper_pred = qpois(0.975, lambda = fit_resp)
+  )
+
+ggplot(summary_heights, aes(x = height_mar12, y = fit_resp, color = rhiz_region)) +
+  geom_point(size = 3) +
+  geom_errorbar(aes(ymin = lower_fit, ymax = upper_fit), width = 0.3, linetype = "dotted") + 
+  geom_errorbar(aes(ymin = lower_pred, ymax = upper_pred), width = 0.6, alpha = 0.4) +    
+  scale_color_paletteer_d("nationalparkcolors::Acadia") +
+  labs(
+    title = "Fitted Values with 95% Fit and Prediction Intervals",
+    x = "Height (cm)",
+    y = "Predicted Number of Leaves (on Response Scale)",
+    color = "Rhizobia Region"
+  ) +
+facet_wrap(~ height_type, scales = "free_x") 
+
+```
+
+# **Question 4: Mix it up!**
+
+```{r}
+# 4a. Load & Plot
+
+reedfrogs <- read_delim("https://github.com/rmcelreath/rethinking/raw/master/data/reedfrogs.csv",
+                        delim = ";") |>
+  mutate(tank = 1:n() |> as.character(),
+         died = density - surv)
+
+frog_plot <- ggplot(data = reedfrogs, aes(y=surv, x = size, color = pred)) +
+  geom_point(alpha = .8, size = 2) +
+   scale_color_manual(values = c("no" = "#D95F30FF", "pred" = "#3A488AFF"))+
+  facet_wrap(~density)+
+  labs(
+    title = "Survivorship by Tank Size and Predator Treatment",
+    x = "Tank Size",
+    y = "Number of Frogs Survived",
+    color = "Predator Present"
+  ) 
+ 
+frog_plot
+```
+
+```{r}
+
+reedfrogs_expanded <- reedfrogs |>
+  group_by(tank, size, pred, density) |>
+  reframe(status = c(rep(1, surv), rep(0, died))) |>
+  ungroup()
+
+  
+
+frog_ex_plot <- ggplot(data=reedfrogs_expanded, aes(x=size, y = status, color = pred)) +
+  geom_jitter(alpha = .6) +
+  scale_color_manual(values = c("no" = "#D95F30FF", "pred" = "#3A488AFF"))+
+  facet_wrap(~density) +
+  scale_y_continuous(breaks = c(0, 1), labels = c("Died", "Survived")) +
+  labs(
+    title = "Survivorship by Tank Size and Density",
+    x = "Tank Size",
+    y = "Status",
+    color = "Predator Present"
+  )
+
+frog_ex_plot
+```
+
+```{r}
+#4b. Am I over it? 
+
+frog_mod <- glm(data = reedfrogs_expanded, status ~ pred*size, family = binomial, weights = density)
+
+check_model(frog_mod)
+
+check_overdispersion(frog_mod)
+
+
+
+# there is overdispersion detected
+```
+
+```{r}
+# 4c. Fixed or Random Intercept
+
+frog_mm <- glmer(status ~ size*pred + (1|tank), 
+                 weights = density, 
+                 family = binomial,
+                 data = reedfrogs_expanded)
+
+check_model(frog_mm)
+
+check_overdispersion(frog_mm)
+
+# there is slightly less overdispersion in the mixed effects model including tank random effects. The random tank effect accounts for heterogeneity between the groups, which reduces random variance observed in the model.  
+
+frog_FE_mod <- glm(data = 
+  reedfrogs_expanded,
+  status ~ size*pred + tank,
+  family = binomial,
+  weights = density,
+  )
+
+summary(frog_FE_mod)
+check_overdispersion(frog_FE_mod)
+
+# Using a FE of tank would treat each tank as its own level, which would add a bunch of dummy variables to the model. The model would then try to explain the variability between the individual tanks, rather than explaining the random effect.The model would become oversaturated.  
+
+```
+
+```{r}
+# 4d. Changes in Parameters
+
+summary(frog_mod)$coefficients
+summary(frog_mm)$coefficients
+
+
+# Adding the random intercept allowed for variation in the baseline level of the response variable across all of the different groups. The fixed effects represents the average effect of the independent variables across all of the groups.
+
+```
+
+```{r}
+# 4e. Model Evaluation
+
+frog_em <- emmeans(frog_mm, ~ pred | size, type = "response")
+
+frog_em
+
+contrast(frog_em, method = "pairwise")
+
+froggy_df <- as.data.frame(frog_em)
+
+em_froggy_plot <- ggplot(froggy_df, aes(x = size, y = prob, color = pred)) +
+  geom_line(size = 1.2) +
+  geom_point(size = 2) +
+  scale_color_manual(values = c("no" = "#D95F30FF", "pred" = "#3A488AFF"))+
+    geom_errorbar(aes(ymin = asymp.LCL, ymax = asymp.UCL),
+                width = 0.5, alpha = 0.6, color = "black")  +
+  labs(
+    title = "Estimated Survival Probability\n by Tank Size and Predator Treatment",
+    x = "Tank Size",
+    y = "Estimated Probability of Survival",
+    color = "Predator"
+  )
+
+em_froggy_plot + geom_jitter(data = reedfrogs_expanded,
+              aes(x = size, y = status, color = pred),
+              alpha = 0.09,
+              width = 0.2, height = 0.05,
+              shape = 16) +
+   facet_wrap(~density, labeller = label_both) 
+
+
+
+```
+
+### **5. What did we do?**
+
+$$
+  Y_{ij} = \beta_0 + \beta_1 X_{ij} + \alpha_j + \epsilon_{ij}
+$$
+
+$$
+\alpha_j \sim N(0,\sigma^2_{\alpha})
+$$
+
+$$
+\epsilon_{ij} \sim N(0,\sigma^2)
+$$
+
+Where $Y_{ij}$ is the probability of a tadpole surviving
+
+$\beta_0$ is the fixed effect intercept
+
+$\beta_1$ is effect of size
+
+$X_{ij}$ is the effect of treatment
+
+$\alpha_j$ is the deviation due to random tank variation
+
+$\epsilon_{ij}$ is error
+
+# **Self Evaluation**
+
+### A. I'm okay!
+
+### B. I am feeling more comfortable with ggplot and visualization, and tidying data.
+
+### C. Nothing is really easy – but I would say picking color palettes & themes has been the most fun.
+
+### D. I feel as though I've learned a lot rather quickly. I started off the semester with a basic knowledge of bash and R, and I feel pretty confident with my foundation of knowledge. I can troubleshoot my own problems and know the resources to use when I need additional help.
+
+### E. I eventually want to go to graduate school. My experience in this class will help me prep for higher level statistical analysis and coding.
+
+### F. I have only taken intro to stats, so some of the more complex statistical terms / analyses can be a bit tough for me. I want to become more comfortable using these tests and knowing what exactly the results mean.
+
+### G. I have completed all of the assignments thus far. This has been helpful for my growth as a student and researcher, and has pushed my boundaries. I've had to become comfortable with not immediately understanding something the first time, which is definitely an important skill if I continue on to higher education.
+
+### H. This exam definitely stretched my abilities. I needed to go back into previous labs to revisit work we've done to apply it to the midterm, and do outside research to build upon that. This midterm was definitely a challenge, but I feel a bit more confident about my skills (and ability to troubleshoot & use stack overflow!)
+
+### I. Sufficient. I feel confident in my graphs, but for some of the modeling I am unsure if I made the correct choices for type of linear regression and statistical parameters to show.
+
+### J. Sufficient. I feel as though I've worked hard, but I still have to brush up on some statistical knowledge and review previous lectures.
+
+### K. I want to become more comfortable using higher level statistics to create meaningful and significant deductions from my data. I also want to have the knowledge base to interpret more statistical analysis in scientific papers that I read. Also, I am still having trouble understanding when assumptions are "correct enough".
